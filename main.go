@@ -37,7 +37,7 @@ func main() {
                 if err != nil {
                     continue
                 } else {
-                    fmt.Println(r.Answer[0].(*dns.CNAME).Target)    
+                    fmt.Println(strings.TrimRight(r.Answer[0].(*dns.CNAME).Target,"."))
                 }  
             }
             wg.Done()
