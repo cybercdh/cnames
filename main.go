@@ -35,7 +35,7 @@ func main() {
             m.RecursionDesired = true
             r, _ := dns.Exchange(m, "8.8.4.4:53")
             if r.Answer != nil {
-              fmt.Println(r.Answer[0].(*dns.CNAME).Target)
+              fmt.Println(strings.TrimSuffix(r.Answer[0].(*dns.CNAME).Target,"."))
             }
           }
           wg.Done()
