@@ -10,7 +10,7 @@ import (
     "sync"
     "github.com/miekg/dns"
 )
-
+var wg sync.WaitGroup
 func main() {
 
     var concurrency int
@@ -18,29 +18,27 @@ func main() {
 
     flag.Parse()
 
-    config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-    c := new(dns.Client)
+    // config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
+    // c := new(dns.Client)
     m := new(dns.Msg)
 
     urls := make(chan string)
 
     // spin up a bunch of workers
-    var wg sync.WaitGroup
     for i := 0; i < concurrency; i++ {
         wg.Add(1)
 
         go func() {
-            for url := range urls {
-                m.SetQuestion(url+".", dns.TypeCNAME)
-                m.RecursionDesired = true
-                r, _, err := c.Exchange(m, config.Servers[0]+":"+config.Port)
-                if err != nil {
-                    continue
-                } else {
-                    fmt.Println(strings.TrimRight(r.Answer[0].(*dns.CNAME).Target,"."))
-                }  
+          // do something
+          for url := range urls {
+            m.SetQuestion(url+".", dns.TypeCNAME)
+            m.RecursionDesired = true
+            r, _ := dns.Exchange(m, "8.8.4.4:53")
+            if r.Answer != nil {
+              fmt.Println(r.Answer[0].(*dns.CNAME).Target)
             }
-            wg.Done()
+          }
+          wg.Done()
         }()
     }
 
