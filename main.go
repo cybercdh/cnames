@@ -21,18 +21,14 @@ func main() {
 
     flag.Parse()
 
-    // config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-    // c := new(dns.Client)
     m := new(dns.Msg)
 
     urls := make(chan string)
 
-    // spin up a bunch of workers
     for i := 0; i < concurrency; i++ {
         wg.Add(1)
 
         go func() {
-          // do something
           for url := range urls {
             m.SetQuestion(url+".", dns.TypeCNAME)
             m.RecursionDesired = true
