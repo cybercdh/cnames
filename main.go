@@ -35,6 +35,7 @@ func main() {
     // a list of dns servers to randomly choose from
     dns_servers := []string{
         "1.1.1.1:53",
+        "1.0.0.1:53",
         "8.8.8.8:53",
         "8.8.4.4:53",
         "9.9.9.9:53",
@@ -58,7 +59,8 @@ func main() {
                 m.RecursionDesired = true
                 r, err := dns.Exchange(m, check.Nameserver)
                 if err != nil {
-                    log.Fatalln(err)
+                    log.Println(err)
+                    continue
                 }
                 if r.Answer != nil {
                     cname := r.Answer[0].(*dns.CNAME).Target
