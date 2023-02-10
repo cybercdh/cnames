@@ -6,14 +6,21 @@ import (
     "fmt"
     "io"
     "log"
+    "math/rand"
     "os"
     "strings"
     "sync"
+    "time"
 
     "github.com/miekg/dns"
 )
 
 var wg sync.WaitGroup
+
+type check struct {
+    Domain     string
+    Nameserver string
+}
 
 func main() {
 
@@ -25,26 +32,38 @@ func main() {
 
     flag.Parse()
 
+    // a list of dns servers to randomly choose from
+    dns_servers := []string{
+        "1.1.1.1:53",
+        "8.8.8.8:53",
+        "8.8.4.4:53",
+        "9.9.9.9:53",
+    }
+
+    // seed to randomly select dns server
+    rand.Seed(time.Now().UnixNano())
+
     // use a buffered channel to prevent blocking
-    domains := make(chan string, 100)
+    checks := make(chan check, 100)
 
     for i := 0; i < concurrency; i++ {
         wg.Add(1)
 
         go func() {
 
-            for domain := range domains {
+            for check := range checks {
+
                 m := new(dns.Msg)
-                m.SetQuestion(domain+".", dns.TypeCNAME)
+                m.SetQuestion(check.Domain+".", dns.TypeCNAME)
                 m.RecursionDesired = true
-                r, err := dns.Exchange(m, "8.8.4.4:53")
+                r, err := dns.Exchange(m, check.Nameserver)
                 if err != nil {
                     log.Fatalln(err)
                 }
                 if r.Answer != nil {
                     cname := r.Answer[0].(*dns.CNAME).Target
                     if verbose {
-                        fmt.Printf("%s : %s\n", domain, strings.TrimSuffix(cname, "."))
+                        fmt.Printf("%s : %s\n", check.Domain, strings.TrimSuffix(cname, "."))
                     } else {
                         fmt.Println(strings.TrimSuffix(cname, "."))
                     }
@@ -68,11 +87,14 @@ func main() {
     sc := bufio.NewScanner(input_domains)
 
     // send input to the channel
+    // and randomly choose a server from the list
+    // to help prevent timeouts
     for sc.Scan() {
-        domains <- sc.Text()
+        server := dns_servers[rand.Intn(len(dns_servers))]
+        checks <- check{sc.Text(), server}
     }
 
     // tidy up
-    close(domains)
+    close(checks)
     wg.Wait()
 }

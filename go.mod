@@ -2,10 +2,7 @@ module github.com/cybercdh/cnames
 
 go 1.19
 
-require (
-	github.com/lixiangzhong/dnsutil v1.4.0
-	github.com/miekg/dns v1.1.50
-)
+require github.com/miekg/dns v1.1.50
 
 require (
 	golang.org/x/mod v0.4.2 // indirect
