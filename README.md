@@ -23,4 +23,4 @@ or if you want to see which subdomain has the associated CNAME, use the verbose 
 
 If you have Go installed and configured (i.e. with $GOPATH/bin in your $PATH):
 
-`go get -u github.com/cybercdh/cnames`
+`go install github.com/cybercdh/cnames@latest`
