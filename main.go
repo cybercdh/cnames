@@ -1,66 +1,78 @@
 package main
 
 import (
-    "fmt"
-    "flag"
-    "io"
-    "strings"
-    "os"
     "bufio"
+    "flag"
+    "fmt"
+    "io"
+    "log"
+    "os"
+    "strings"
     "sync"
+
     "github.com/miekg/dns"
 )
+
 var wg sync.WaitGroup
+
 func main() {
 
     var concurrency int
     flag.IntVar(&concurrency, "c", 20, "set the concurrency level")
 
     var verbose bool
-    flag.BoolVar(&verbose, "v", false, "display url : cname")
+    flag.BoolVar(&verbose, "v", false, "display domain : cname")
 
     flag.Parse()
 
-    m := new(dns.Msg)
-
-    urls := make(chan string)
+    // use a buffered channel to prevent blocking
+    domains := make(chan string, 100)
 
     for i := 0; i < concurrency; i++ {
         wg.Add(1)
 
         go func() {
-          for url := range urls {
-            m.SetQuestion(url+".", dns.TypeCNAME)
-            m.RecursionDesired = true
-            r, _ := dns.Exchange(m, "8.8.4.4:53")
-            if r.Answer != nil {
-              
-              if verbose {
-                fmt.Printf("%s : %s\n", url, strings.TrimSuffix(r.Answer[0].(*dns.CNAME).Target,"."))
-              } else {
-                fmt.Println(strings.TrimSuffix(r.Answer[0].(*dns.CNAME).Target,"."))  
-              }
-              
+
+            for domain := range domains {
+                m := new(dns.Msg)
+                m.SetQuestion(domain+".", dns.TypeCNAME)
+                m.RecursionDesired = true
+                r, err := dns.Exchange(m, "8.8.4.4:53")
+                if err != nil {
+                    log.Fatalln(err)
+                }
+                if r.Answer != nil {
+                    cname := r.Answer[0].(*dns.CNAME).Target
+                    if verbose {
+                        fmt.Printf("%s : %s\n", domain, strings.TrimSuffix(cname, "."))
+                    } else {
+                        fmt.Println(strings.TrimSuffix(cname, "."))
+                    }
+
+                }
             }
-          }
-          wg.Done()
+            wg.Done()
         }()
     }
 
-    var input_urls io.Reader
-    input_urls = os.Stdin
+    // read user input either piped to the program
+    // or from a single argument
+    var input_domains io.Reader
+    input_domains = os.Stdin
 
-    arg_url := flag.Arg(0)
-    if arg_url != "" {
-        input_urls = strings.NewReader(arg_url)
+    arg_domain := flag.Arg(0)
+    if arg_domain != "" {
+        input_domains = strings.NewReader(arg_domain)
     }
 
-    sc := bufio.NewScanner(input_urls)
-    
+    sc := bufio.NewScanner(input_domains)
+
+    // send input to the channel
     for sc.Scan() {
-        urls <- sc.Text()
+        domains <- sc.Text()
     }
 
-    close(urls)
+    // tidy up
+    close(domains)
     wg.Wait()
 }
